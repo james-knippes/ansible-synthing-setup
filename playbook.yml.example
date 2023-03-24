@@ -1,0 +1,36 @@
+- name: Syncthing setup
+  hosts: server
+  gather_facts: false
+  tasks:
+    - name: start syncthing.service (need rest api online)
+      become: true
+      ansible.builtin.systemd:
+        daemon_reload: true
+        name: "syncthing@default.service"
+        state: started
+      changed_when: false
+    - name: set global announcement (default enable)
+      become: yes
+      become_user: default
+      syncthing_configset:
+        option: "global-ann-enabled"
+        value: "true"
+    - name: add default sync folder
+      become: yes
+      become_user: default
+      syncthing_folder:
+        folder_id: "sync-default"
+    - name: add all known device ids
+      become: yes
+      become_user: default
+      syncthing_device:
+        device_id: "{{ hostvars[item].usyncid }}"
+        device_name: "{{ hostvars[item].inventory_hostname }}"
+      loop: "{{ groups['server'] }}"
+    - name: share default sync folder with all known devices
+      become: yes
+      become_user: default
+      syncthing_share:
+        device_id: "{{ hostvars[item].usyncid }}"
+        folder_id: "sync-default"
+      loop: "{{ groups['server'] }}"
